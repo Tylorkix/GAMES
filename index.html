@@ -58,6 +58,7 @@ button:hover{transform:scale(1.05);}
 #adminBtn{position:fixed;top:10px;left:10px;width:auto;}
 #musicToggle{position:fixed;top:10px;right:10px;width:auto;}
 input{padding:10px;width:85%;margin:5px;}
+
 #popup{
     position:fixed;
     top:50%;
@@ -116,6 +117,7 @@ input{padding:10px;width:85%;margin:5px;}
 
     <button onclick="addQuestion()">➕ Add Quiz</button>
     <button onclick="editQuestion()">✏️ Edit Selected</button>
+    <button onclick="cancelEdit()">🚫 Cancel Edit</button>
     <button style="background:red" onclick="deleteQuestion()">❌ Delete</button>
 
     <h3>Click Question to Edit</h3>
@@ -129,43 +131,47 @@ input{padding:10px;width:85%;margin:5px;}
 <audio id="wrongSound" src="https://files.catbox.moe/d2cjfw.m4a"></audio>
 
 <script>
-// ================= JSONBIN =================
-const BIN_ID = "69c0f07bb7ec241ddc93ff79 ";
-const API_KEY = "$2a$10$kfY1WVfSDsvhUgF1ggGpY.xVPzZF136Lw3tluE6Yh0LezJ30Y96mS";
+
+// JSONBIN
+const BIN_ID="69c0f07bb7ec241ddc93ff79";
+const API_KEY="$2a$10$kfY1WVfSDsvhUgF1ggGpY.xVPzZF136Lw3tluE6Yh0LezJ30Y96mS";
 
 async function getData(){
-    let res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,{
-        headers:{ "X-Master-Key": API_KEY }
-    });
-    let data = await res.json();
-    return data.record || {questions:[], leaderboard:[]};
+    let res=await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,{headers:{"X-Master-Key":API_KEY}});
+    let data=await res.json();
+    return data.record||{questions:[],leaderboard:[]};
 }
-
 async function saveData(data){
     await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`,{
         method:"PUT",
-        headers:{
-            "Content-Type":"application/json",
-            "X-Master-Key":API_KEY
-        },
+        headers:{"Content-Type":"application/json","X-Master-Key":API_KEY},
         body:JSON.stringify(data)
     });
 }
 
-// ================= GAME =================
+// helpers
+function clearForm(){
+    qText.value="";
+    opt1.value="";
+    opt2.value="";
+    opt3.value="";
+    opt4.value="";
+    correctAns.value="";
+}
+function showPopup(msg){
+    popup.innerText=msg;
+    popup.classList.add("show");
+    setTimeout(()=>popup.classList.remove("show"),2000);
+}
+
+// GAME
 let quiz=[],i=0,score=0,userAnswers=[],timer,t=10,selectedIndex=null;
 
 async function startGame(){
-    if(!playerName.value){showPopup("Enter name");return;}
+    if(!playerName.value)return showPopup("Enter name");
 
-    setRandomBackground();
-
-    let data = await getData();
-    quiz = data.questions;
-
-    if(quiz.length===0){
-        quiz=[{question:"Test?",answers:["Yes","No"],correct:"Yes"}];
-    }
+    let data=await getData();
+    quiz=data.questions;
 
     startScreen.style.display="none";
     quizScreen.style.display="block";
@@ -175,7 +181,6 @@ async function startGame(){
 }
 
 function nextQ(){
-    setRandomBackground();
     clearInterval(timer);
     t=10;
 
@@ -183,35 +188,18 @@ function nextQ(){
         timer.innerText="Time:"+t;
         timerFill.style.width=(t/10)*100+"%";
         t--;
-        if(t<0){
-            clearInterval(timer);
-            userAnswers.push("No Answer");
-            next();
-        }
+        if(t<0){clearInterval(timer);next();}
     },1000);
 
     let q=quiz[i];
     question.innerText=q.question;
 
-    answersBox.innerHTML=q.answers.map(a=>
-        `<button onclick="check('${a}')">${a}</button>`
-    ).join("");
+    answersBox.innerHTML=q.answers.map(a=>`<button onclick="check('${a}')">${a}</button>`).join("");
 }
 
 function check(ans){
-    let btns=document.querySelectorAll("#answersBox button");
-
-    btns.forEach(b=>{
-        if(b.innerText===quiz[i].correct)b.classList.add("correct");
-        if(b.innerText===ans && ans!==quiz[i].correct)b.classList.add("wrong");
-        b.disabled=true;
-    });
-
-    userAnswers.push(ans);
-
     if(ans===quiz[i].correct){score++;correctSound.play();}
     else{wrongSound.play();}
-
     setTimeout(next,1000);
 }
 
@@ -221,139 +209,100 @@ function next(){
     else endGame();
 }
 
-// ================= LEADERBOARD =================
-async function saveScore(){
-    let data = await getData();
-
-    data.leaderboard.push({
-        name:playerName.value,
-        score:score
-    });
-
-    // sort highest first
-    data.leaderboard.sort((a,b)=>b.score-a.score);
-
-    // keep top 10
-    data.leaderboard = data.leaderboard.slice(0,10);
-
-    await saveData(data);
-}
-
-async function showLeaderboard(){
-    let data = await getData();
-
-    let html = "<h2>🏆 Leaderboard</h2>";
-
-    data.leaderboard.forEach((p,i)=>{
-        html+=`<div>${i+1}. ${p.name} - ${p.score}</div>`;
-    });
-
-    question.innerHTML += html;
-}
-
 async function endGame(){
     let percent=Math.round((score/quiz.length)*100);
 
-    await saveScore();
-
     let html=`<h2>${score}/${quiz.length}</h2><h3>${percent}%</h3>`;
-
-    quiz.forEach((q,idx)=>{
-        let user=userAnswers[idx]||"No Answer";
-        let ok=user===q.correct;
-
-        html+=`<div style="background:${ok?'green':'red'};margin:10px;padding:10px;border-radius:10px;">
-        ${q.question}<br>
-        You: ${user} ${ok?'✅':'❌'}<br>
-        Correct: ${q.correct}
-        </div>`;
-    });
-
     question.innerHTML=html;
     answersBox.innerHTML="";
-
-    await showLeaderboard();
 }
 
-// ================= ADMIN =================
+// ADMIN
 async function loadAdmin(){
-    let data = await getData();
-    let q = data.questions;
-
-    questionList.innerHTML=q.map((item,i)=>`
+    let data=await getData();
+    questionList.innerHTML=data.questions.map((q,i)=>`
     <div onclick="selectQuestion(${i})"
-    style="border:2px solid ${i===selectedIndex?'#6a5af9':'#ccc'};
-    margin:10px;padding:10px;border-radius:10px;">
-    <b>${item.question}</b><br>
-    ${item.answers.map(a=>`• ${a}`).join("<br>")}
-    <br><span style="color:lime">✔ ${item.correct}</span>
-    </div>
-    `).join("");
+    style="border:2px solid ${i===selectedIndex?'#6a5af9':'#ccc'};margin:10px;padding:10px;">
+    ${q.question}
+    </div>`).join("");
 }
 
 async function selectQuestion(i){
-    let data = await getData();
-    let item = data.questions[i];
+    let data=await getData();
+    let q=data.questions[i];
 
     selectedIndex=i;
 
-    qText.value=item.question;
-    opt1.value=item.answers[0]||"";
-    opt2.value=item.answers[1]||"";
-    opt3.value=item.answers[2]||"";
-    opt4.value=item.answers[3]||"";
-    correctAns.value=item.correct;
+    qText.value=q.question;
+    opt1.value=q.answers[0]||"";
+    opt2.value=q.answers[1]||"";
+    opt3.value=q.answers[2]||"";
+    opt4.value=q.answers[3]||"";
+    correctAns.value=q.correct;
 
+    showPopup("Editing...");
     loadAdmin();
 }
 
 async function addQuestion(){
-    let data = await getData();
+    let data=await getData();
 
     data.questions.push({
         question:qText.value,
-        answers:[opt1.value,opt2.value,opt3.value,opt4.value].filter(a=>a!=""),
+        answers:[opt1.value,opt2.value,opt3.value,opt4.value],
         correct:correctAns.value
     });
 
     await saveData(data);
 
     showPopup("Added!");
+    clearForm();
     loadAdmin();
 }
 
 async function editQuestion(){
     if(selectedIndex===null)return showPopup("Select one");
 
-    let data = await getData();
+    let data=await getData();
 
     data.questions[selectedIndex]={
         question:qText.value,
-        answers:[opt1.value,opt2.value,opt3.value,opt4.value].filter(a=>a!=""),
+        answers:[opt1.value,opt2.value,opt3.value,opt4.value],
         correct:correctAns.value
     };
 
     await saveData(data);
 
     showPopup("Updated!");
+    clearForm();
+    selectedIndex=null;
+    loadAdmin();
+}
+
+function cancelEdit(){
+    selectedIndex=null;
+    clearForm();
+    showPopup("Edit cancelled");
     loadAdmin();
 }
 
 async function deleteQuestion(){
     if(selectedIndex===null)return showPopup("Select one");
 
-    let data = await getData();
+    if(!confirm("Are you sure you want to delete this question?")) return;
 
+    let data=await getData();
     data.questions.splice(selectedIndex,1);
 
     await saveData(data);
 
     selectedIndex=null;
+    clearForm();
     showPopup("Deleted!");
     loadAdmin();
 }
 
-// ================= UI =================
+// UI
 function openAdmin(){
     startScreen.style.display="none";
     adminLogin.style.display="block";
@@ -368,25 +317,6 @@ function checkAdmin(){
 function goHome(){
     adminPanel.style.display="none";
     startScreen.style.display="block";
-}
-
-// ================= EXTRAS =================
-const backgrounds=[
-"https://files.catbox.moe/36rpa7.jpg",
-"https://files.catbox.moe/sca4v4.jpg",
-"https://files.catbox.moe/ri4psa.jpg",
-"https://files.catbox.moe/md9t5u.jpg"
-];
-
-function setRandomBackground(){
-    document.body.style.backgroundImage=
-    `url(${backgrounds[Math.floor(Math.random()*backgrounds.length)]})`;
-}
-
-function showPopup(msg){
-    popup.innerText=msg;
-    popup.classList.add("show");
-    setTimeout(()=>popup.classList.remove("show"),2000);
 }
 
 let musicOn=false;
