@@ -58,20 +58,6 @@ button:hover{transform:scale(1.05);}
 #adminBtn{position:fixed;top:10px;left:10px;width:auto;}
 #musicToggle{position:fixed;top:10px;right:10px;width:auto;}
 input{padding:10px;width:85%;margin:5px;}
-
-.diffBtn{
-    display:inline-block;
-    padding:10px 20px;
-    margin:5px;
-    border-radius:10px;
-    cursor:pointer;
-    border:2px solid white;
-}
-.active{
-    background:#00ffcc;
-    color:black;
-}
-
 #popup{
     position:fixed;
     top:50%;
@@ -99,22 +85,12 @@ input{padding:10px;width:85%;margin:5px;}
 
 <div id="popup"></div>
 
-<!-- START -->
 <div class="box" id="startScreen">
     <h2>Enter Name</h2>
     <input id="playerName">
-
-    <h3>Select Difficulty</h3>
-    <div>
-        <span class="diffBtn" onclick="setDifficulty('easy',this)">Easy 🟢</span>
-        <span class="diffBtn" onclick="setDifficulty('medium',this)">Medium 🟡</span>
-        <span class="diffBtn" onclick="setDifficulty('hard',this)">Hard 🔴</span>
-    </div>
-
     <button onclick="startGame()">Start Game</button>
 </div>
 
-<!-- QUIZ -->
 <div class="box" id="quizScreen" style="display:none;">
     <h3 id="timer"></h3>
     <div id="timerBar"><div id="timerFill"></div></div>
@@ -122,14 +98,12 @@ input{padding:10px;width:85%;margin:5px;}
     <div id="answersBox"></div>
 </div>
 
-<!-- ADMIN LOGIN -->
 <div class="box" id="adminLogin" style="display:none;">
     <h2>Admin Login</h2>
     <input id="adminPass" type="password">
     <button onclick="checkAdmin()">Login</button>
 </div>
 
-<!-- ADMIN PANEL -->
 <div class="box" id="adminPanel" style="display:none;">
     <h2>Admin Panel</h2>
 
@@ -140,22 +114,11 @@ input{padding:10px;width:85%;margin:5px;}
     <input id="opt4" placeholder="Option 4">
     <input id="correctAns" placeholder="Correct Answer">
 
-    <h3>Select Difficulty</h3>
-    <div>
-        <span class="diffBtn" onclick="setAdminDifficulty('easy',this)">Easy 🟢</span>
-        <span class="diffBtn" onclick="setAdminDifficulty('medium',this)">Medium 🟡</span>
-        <span class="diffBtn" onclick="setAdminDifficulty('hard',this)">Hard 🔴</span>
-    </div>
-
     <button onclick="addQuestion()">➕ Add Quiz</button>
     <button onclick="editQuestion()">✏️ Edit Selected</button>
     <button style="background:red" onclick="deleteQuestion()">❌ Delete</button>
 
-    <h3>🔐 Change Password</h3>
-    <input id="newPass" placeholder="New Password">
-    <button onclick="changePassword()">Change Password</button>
-
-    <h3>Questions</h3>
+    <h3>Click Question to Edit</h3>
     <div id="questionList"></div>
 
     <button onclick="goHome()">Back</button>
@@ -166,17 +129,16 @@ input{padding:10px;width:85%;margin:5px;}
 <audio id="wrongSound" src="https://files.catbox.moe/d2cjfw.m4a"></audio>
 
 <script>
-
-// JSONBIN
-const BIN_ID="YOUR_BIN_ID";
-const API_KEY="YOUR_X_MASTER_KEY";
+// ================= JSONBIN =================
+const BIN_ID = "69c0f07bb7ec241ddc93ff79 ";
+const API_KEY = "$2a$10$kfY1WVfSDsvhUgF1ggGpY.xVPzZF136Lw3tluE6Yh0LezJ30Y96mS";
 
 async function getData(){
-    let res=await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,{
-        headers:{"X-Master-Key":API_KEY}
+    let res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,{
+        headers:{ "X-Master-Key": API_KEY }
     });
-    let data=await res.json();
-    return data.record||{questions:[],leaderboard:[],adminPass:"tylor"};
+    let data = await res.json();
+    return data.record || {questions:[], leaderboard:[]};
 }
 
 async function saveData(data){
@@ -190,52 +152,20 @@ async function saveData(data){
     });
 }
 
-// DIFFICULTY
-let selectedDifficulty="";
-let adminDifficulty="";
-let selectedIndex=null;
-
-function setDifficulty(level,el){
-    selectedDifficulty=level;
-    document.querySelectorAll("#startScreen .diffBtn").forEach(b=>b.classList.remove("active"));
-    el.classList.add("active");
-}
-
-function setAdminDifficulty(level,el){
-    adminDifficulty=level;
-    document.querySelectorAll("#adminPanel .diffBtn").forEach(b=>b.classList.remove("active"));
-    el.classList.add("active");
-}
-
-// ADMIN LOGIN
-async function checkAdmin(){
-    let data=await getData();
-    if(adminPass.value===data.adminPass){
-        adminLogin.style.display="none";
-        adminPanel.style.display="block";
-        loadAdmin();
-    }else showPopup("Wrong password");
-}
-
-// CHANGE PASSWORD
-async function changePassword(){
-    let data=await getData();
-    data.adminPass=newPass.value;
-    await saveData(data);
-    showPopup("Password Updated!");
-}
-
-// GAME
-let quiz=[],i=0,score=0,userAnswers=[],timer,t=10;
+// ================= GAME =================
+let quiz=[],i=0,score=0,userAnswers=[],timer,t=10,selectedIndex=null;
 
 async function startGame(){
-    if(!playerName.value)return showPopup("Enter name");
-    if(!selectedDifficulty)return showPopup("Select difficulty");
+    if(!playerName.value){showPopup("Enter name");return;}
 
-    let data=await getData();
-    quiz=data.questions.filter(q=>q.difficulty===selectedDifficulty);
+    setRandomBackground();
 
-    if(quiz.length===0)return showPopup("No questions");
+    let data = await getData();
+    quiz = data.questions;
+
+    if(quiz.length===0){
+        quiz=[{question:"Test?",answers:["Yes","No"],correct:"Yes"}];
+    }
 
     startScreen.style.display="none";
     quizScreen.style.display="block";
@@ -245,6 +175,7 @@ async function startGame(){
 }
 
 function nextQ(){
+    setRandomBackground();
     clearInterval(timer);
     t=10;
 
@@ -290,37 +221,40 @@ function next(){
     else endGame();
 }
 
-// LEADERBOARD
+// ================= LEADERBOARD =================
 async function saveScore(){
-    let data=await getData();
+    let data = await getData();
 
     data.leaderboard.push({
         name:playerName.value,
         score:score
     });
 
+    // sort highest first
     data.leaderboard.sort((a,b)=>b.score-a.score);
-    data.leaderboard=data.leaderboard.slice(0,10);
+
+    // keep top 10
+    data.leaderboard = data.leaderboard.slice(0,10);
 
     await saveData(data);
 }
 
 async function showLeaderboard(){
-    let data=await getData();
+    let data = await getData();
 
-    let html="<h2>🏆 Leaderboard</h2>";
+    let html = "<h2>🏆 Leaderboard</h2>";
 
     data.leaderboard.forEach((p,i)=>{
         html+=`<div>${i+1}. ${p.name} - ${p.score}</div>`;
     });
 
-    question.innerHTML+=html;
+    question.innerHTML += html;
 }
 
 async function endGame(){
-    await saveScore();
-
     let percent=Math.round((score/quiz.length)*100);
+
+    await saveScore();
 
     let html=`<h2>${score}/${quiz.length}</h2><h3>${percent}%</h3>`;
 
@@ -341,23 +275,25 @@ async function endGame(){
     await showLeaderboard();
 }
 
-// ADMIN CRUD
+// ================= ADMIN =================
 async function loadAdmin(){
-    let data=await getData();
-    let q=data.questions;
+    let data = await getData();
+    let q = data.questions;
 
     questionList.innerHTML=q.map((item,i)=>`
     <div onclick="selectQuestion(${i})"
     style="border:2px solid ${i===selectedIndex?'#6a5af9':'#ccc'};
     margin:10px;padding:10px;border-radius:10px;">
-    <b>${item.question}</b> (${item.difficulty})
+    <b>${item.question}</b><br>
+    ${item.answers.map(a=>`• ${a}`).join("<br>")}
+    <br><span style="color:lime">✔ ${item.correct}</span>
     </div>
     `).join("");
 }
 
 async function selectQuestion(i){
-    let data=await getData();
-    let item=data.questions[i];
+    let data = await getData();
+    let item = data.questions[i];
 
     selectedIndex=i;
 
@@ -368,20 +304,20 @@ async function selectQuestion(i){
     opt4.value=item.answers[3]||"";
     correctAns.value=item.correct;
 
-    setAdminDifficulty(item.difficulty, document.querySelector(`#adminPanel .diffBtn[onclick*="${item.difficulty}"]`));
+    loadAdmin();
 }
 
 async function addQuestion(){
-    let data=await getData();
+    let data = await getData();
 
     data.questions.push({
         question:qText.value,
         answers:[opt1.value,opt2.value,opt3.value,opt4.value].filter(a=>a!=""),
-        correct:correctAns.value,
-        difficulty:adminDifficulty
+        correct:correctAns.value
     });
 
     await saveData(data);
+
     showPopup("Added!");
     loadAdmin();
 }
@@ -389,16 +325,16 @@ async function addQuestion(){
 async function editQuestion(){
     if(selectedIndex===null)return showPopup("Select one");
 
-    let data=await getData();
+    let data = await getData();
 
     data.questions[selectedIndex]={
         question:qText.value,
         answers:[opt1.value,opt2.value,opt3.value,opt4.value].filter(a=>a!=""),
-        correct:correctAns.value,
-        difficulty:adminDifficulty
+        correct:correctAns.value
     };
 
     await saveData(data);
+
     showPopup("Updated!");
     loadAdmin();
 }
@@ -406,7 +342,7 @@ async function editQuestion(){
 async function deleteQuestion(){
     if(selectedIndex===null)return showPopup("Select one");
 
-    let data=await getData();
+    let data = await getData();
 
     data.questions.splice(selectedIndex,1);
 
@@ -417,17 +353,36 @@ async function deleteQuestion(){
     loadAdmin();
 }
 
-// UI
+// ================= UI =================
 function openAdmin(){
     startScreen.style.display="none";
     adminLogin.style.display="block";
+}
+function checkAdmin(){
+    if(adminPass.value==="tylor"){
+        adminLogin.style.display="none";
+        adminPanel.style.display="block";
+        loadAdmin();
+    }else showPopup("Wrong password");
 }
 function goHome(){
     adminPanel.style.display="none";
     startScreen.style.display="block";
 }
 
-// EXTRA
+// ================= EXTRAS =================
+const backgrounds=[
+"https://files.catbox.moe/36rpa7.jpg",
+"https://files.catbox.moe/sca4v4.jpg",
+"https://files.catbox.moe/ri4psa.jpg",
+"https://files.catbox.moe/md9t5u.jpg"
+];
+
+function setRandomBackground(){
+    document.body.style.backgroundImage=
+    `url(${backgrounds[Math.floor(Math.random()*backgrounds.length)]})`;
+}
+
 function showPopup(msg){
     popup.innerText=msg;
     popup.classList.add("show");
